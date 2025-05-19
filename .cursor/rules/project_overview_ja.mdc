@@ -1,0 +1,45 @@
+---
+description:
+globs:
+alwaysApply: false
+---
+# プロジェクト概要
+
+このプロジェクトは、Vite を使用した React と TypeScript のスタータープロジェクトです。
+主な技術スタックは以下の通りです。
+
+-   **React**: UI構築のためのJavaScriptライブラリ
+-   **TypeScript**: JavaScriptに静的型付けを追加した言語
+-   **Vite**: 高速なビルドと開発サーバーを提供するフロントエンドツール
+-   **Tailwind CSS**: ユーティリティファーストのCSSフレームワーク
+-   **ESLint**: コードの静的解析ツール（リンター）
+
+## ディレクトリ構成
+
+-   `src/`: アプリケーションの主要なソースコードが格納されています。
+    -   コンポーネント、フック、定数、ユーティリティなどが含まれることが想定されます。
+    -   エントリーポイントは `src/main.tsx` (または `src/index.tsx`) である可能性が高いです。
+-   `public/`: 静的アセット（画像、フォント、`index.html`など）が配置されます。
+-   `index.html`: アプリケーションのルートHTMLファイルです。
+-   `vite.config.ts`: Vite の設定ファイルです。
+-   `tailwind.config.js`: Tailwind CSS の設定ファイルです。
+-   `postcss.config.js`: PostCSS の設定ファイルです。
+-   `tsconfig.json` および関連ファイル: TypeScript のコンパイラ設定です。
+-   `package.json`: プロジェクトの依存関係とスクリプト（`dev`, `build`, `lint` など）が定義されています。
+
+## 主要なライブラリ
+
+-   `lucide-react`: アイコン表示に使用されます。
+-   `react-circular-progressbar`: 円形のプログレスバー表示に使用されます。
+
+## 開発とビルド
+
+-   開発サーバーの起動: `npm run dev` または `yarn dev`
+-   プロダクションビルド: `npm run build` または `yarn build`
+-   コードのリンティング: `npm run lint` または `yarn lint`
+
+## 注意点
+
+-   このルールはプロジェクトの初期状態や一般的な構成に基づいて作成されています。
+-   プロジェクトの進行に伴い、実際の構造や使用技術が変更される可能性があります。
+-   詳細なコンポーネント構造やロジックについては、`src` ディレクトリ内の各ファイルを参照してください。
