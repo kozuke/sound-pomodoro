@@ -207,28 +207,42 @@ const AudioController = ({ mode, isActive, onSessionComplete, remainingTime, tot
       const fadeDuration = 500;
       if (mainLofiAudioRef.current && (!mainLofiAudioRef.current.paused || mainLofiAudioRef.current.volume > 0)) {
         fadeAudio(mainLofiAudioRef.current, 0, fadeDuration, mainFadeIntervalRef, () => {
-          mainLofiAudioRef.current?.pause();
+          if (mainLofiAudioRef.current) {
+            mainLofiAudioRef.current.pause();
+            mainLofiAudioRef.current.currentTime = 0;
+          }
         });
       } else if (mainLofiAudioRef.current) {
          mainLofiAudioRef.current.pause();
+         mainLofiAudioRef.current.currentTime = 0;
          if (mainFadeIntervalRef.current) { clearInterval(mainFadeIntervalRef.current); mainFadeIntervalRef.current = null; }
       }
 
       if (endingLofiAudioRef.current && (!endingLofiAudioRef.current.paused || endingLofiAudioRef.current.volume > 0)) {
         fadeAudio(endingLofiAudioRef.current, 0, fadeDuration, endingFadeIntervalRef, () => {
-          endingLofiAudioRef.current?.pause();
+          if (endingLofiAudioRef.current) {
+            endingLofiAudioRef.current.pause();
+            endingLofiAudioRef.current.currentTime = 0;
+          }
         });
       } else if (endingLofiAudioRef.current) {
          endingLofiAudioRef.current.pause();
+         endingLofiAudioRef.current.currentTime = 0;
          if (endingFadeIntervalRef.current) { clearInterval(endingFadeIntervalRef.current); endingFadeIntervalRef.current = null; }
       }
 
       if (bellAudioRef.current && !bellAudioRef.current.paused) {
         // fadeAudio(bellAudioRef.current, 0, fadeDuration, bellFadeIntervalRef, () => { // Optional: Fade out bell
-        //   bellAudioRef.current?.pause();
+        //   if (bellAudioRef.current) {
+        //     bellAudioRef.current.pause();
+        // bellAudioRef.current.currentTime = 0;
+        //   }
         // });
         bellAudioRef.current.pause(); // For simplicity, pausing directly
+        bellAudioRef.current.currentTime = 0;
         // if (bellFadeIntervalRef.current) { clearInterval(bellFadeIntervalRef.current); bellFadeIntervalRef.current = null; }
+      } else if (bellAudioRef.current) { // Ensure currentTime is reset even if already paused
+        bellAudioRef.current.currentTime = 0;
       }
       hasTransitionedRef.current = false;
     }
