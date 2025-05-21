@@ -205,44 +205,63 @@ const AudioController = ({ mode, isActive, onSessionComplete, remainingTime, tot
       }
     } else { // Timer is not active: Stop all music
       const fadeDuration = 500;
-      if (mainLofiAudioRef.current && (!mainLofiAudioRef.current.paused || mainLofiAudioRef.current.volume > 0)) {
-        fadeAudio(mainLofiAudioRef.current, 0, fadeDuration, mainFadeIntervalRef, () => {
-          if (mainLofiAudioRef.current) {
-            mainLofiAudioRef.current.pause();
+      const isReset = remainingTime === totalDuration; // Check for reset condition
+
+      if (mainLofiAudioRef.current) {
+        if (!mainLofiAudioRef.current.paused || mainLofiAudioRef.current.volume > 0) {
+          fadeAudio(mainLofiAudioRef.current, 0, fadeDuration, mainFadeIntervalRef, () => {
+            if (mainLofiAudioRef.current) {
+              mainLofiAudioRef.current.pause();
+              if (isReset) {
+                mainLofiAudioRef.current.currentTime = 0;
+              }
+            }
+          });
+        } else {
+          // Already paused and volume is 0, or pause was called without fade
+          mainLofiAudioRef.current.pause(); // Ensure it's paused
+          if (isReset) {
             mainLofiAudioRef.current.currentTime = 0;
           }
-        });
-      } else if (mainLofiAudioRef.current) {
-         mainLofiAudioRef.current.pause();
-         mainLofiAudioRef.current.currentTime = 0;
-         if (mainFadeIntervalRef.current) { clearInterval(mainFadeIntervalRef.current); mainFadeIntervalRef.current = null; }
+          if (mainFadeIntervalRef.current) { // Clear interval if it was somehow still running
+            clearInterval(mainFadeIntervalRef.current);
+            mainFadeIntervalRef.current = null;
+          }
+        }
       }
 
-      if (endingLofiAudioRef.current && (!endingLofiAudioRef.current.paused || endingLofiAudioRef.current.volume > 0)) {
-        fadeAudio(endingLofiAudioRef.current, 0, fadeDuration, endingFadeIntervalRef, () => {
-          if (endingLofiAudioRef.current) {
-            endingLofiAudioRef.current.pause();
+      if (endingLofiAudioRef.current) {
+        if (!endingLofiAudioRef.current.paused || endingLofiAudioRef.current.volume > 0) {
+          fadeAudio(endingLofiAudioRef.current, 0, fadeDuration, endingFadeIntervalRef, () => {
+            if (endingLofiAudioRef.current) {
+              endingLofiAudioRef.current.pause();
+              if (isReset) {
+                endingLofiAudioRef.current.currentTime = 0;
+              }
+            }
+          });
+        } else {
+          endingLofiAudioRef.current.pause();
+          if (isReset) {
             endingLofiAudioRef.current.currentTime = 0;
           }
-        });
-      } else if (endingLofiAudioRef.current) {
-         endingLofiAudioRef.current.pause();
-         endingLofiAudioRef.current.currentTime = 0;
-         if (endingFadeIntervalRef.current) { clearInterval(endingFadeIntervalRef.current); endingFadeIntervalRef.current = null; }
+          if (endingFadeIntervalRef.current) {
+            clearInterval(endingFadeIntervalRef.current);
+            endingFadeIntervalRef.current = null;
+          }
+        }
       }
 
-      if (bellAudioRef.current && !bellAudioRef.current.paused) {
-        // fadeAudio(bellAudioRef.current, 0, fadeDuration, bellFadeIntervalRef, () => { // Optional: Fade out bell
-        //   if (bellAudioRef.current) {
-        //     bellAudioRef.current.pause();
-        // bellAudioRef.current.currentTime = 0;
-        //   }
-        // });
-        bellAudioRef.current.pause(); // For simplicity, pausing directly
-        bellAudioRef.current.currentTime = 0;
-        // if (bellFadeIntervalRef.current) { clearInterval(bellFadeIntervalRef.current); bellFadeIntervalRef.current = null; }
-      } else if (bellAudioRef.current) { // Ensure currentTime is reset even if already paused
-        bellAudioRef.current.currentTime = 0;
+      if (bellAudioRef.current) {
+        if (!bellAudioRef.current.paused) {
+          // Assuming bell doesn't need fade out for pause, direct pause
+          bellAudioRef.current.pause();
+          if (isReset) {
+            bellAudioRef.current.currentTime = 0;
+          }
+        } else if (isReset) { // If already paused but it's a reset
+            bellAudioRef.current.currentTime = 0;
+        }
       }
       hasTransitionedRef.current = false;
     }
