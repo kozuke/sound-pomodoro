@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
-import { Music, Coffee, Volume2 } from 'lucide-react';
-import { TIMER_PRESETS, TimerMode } from '../constants/timer';
+import { Music, Coffee, Volume2, Music2 } from 'lucide-react';
+import { TIMER_PRESETS, TimerMode, AUDIO_PATHS } from '../constants/timer';
 import CircularTimer from './CircularTimer';
 import Controls from './Controls';
 import AudioController from './AudioController';
@@ -11,6 +11,8 @@ const TimerContainer = () => {
   const [remainingTime, setRemainingTime] = useState(selectedMinutes * 60);
   const [isActive, setIsActive] = useState(false);
   const [volume, setVolume] = useState(0.5);
+  const [selectedBgm, setSelectedBgm] = useState(AUDIO_PATHS.lofi[0].id);
+  const [selectedBell, setSelectedBell] = useState(AUDIO_PATHS.bell[0].id);
   
   const getCurrentDuration = useCallback(() => {
     const focusDuration = selectedMinutes * 60;
@@ -63,6 +65,9 @@ const TimerContainer = () => {
     setVolume(parseFloat(e.target.value));
   };
 
+  const selectedBgmPath = AUDIO_PATHS.lofi.find(bgm => bgm.id === selectedBgm)?.path || AUDIO_PATHS.lofi[0].path;
+  const selectedBellPath = AUDIO_PATHS.bell.find(bell => bell.id === selectedBell)?.path || AUDIO_PATHS.bell[0].path;
+
   return (
     <div className="flex flex-col items-center justify-center min-h-screen bg-gray-900 text-white p-4">
       <div className="flex flex-col items-center max-w-md w-full mx-auto">
@@ -109,17 +114,45 @@ const TimerContainer = () => {
           onToggle={handleToggle} 
         />
 
-        <div className="flex items-center gap-2 mt-6">
-          <Volume2 size={20} className="text-gray-400" />
-          <input
-            type="range"
-            min="0"
-            max="1"
-            step="0.01"
-            value={volume}
-            onChange={handleVolumeChange}
-            className="w-32 h-2 bg-gray-700 rounded-lg appearance-none cursor-pointer"
-          />
+        <div className="flex flex-col gap-4 mt-6 w-full max-w-xs">
+          <div className="flex items-center gap-2">
+            <Volume2 size={20} className="text-gray-400" />
+            <input
+              type="range"
+              min="0"
+              max="1"
+              step="0.01"
+              value={volume}
+              onChange={handleVolumeChange}
+              className="w-full h-2 bg-gray-700 rounded-lg appearance-none cursor-pointer"
+            />
+          </div>
+
+          <div className="flex items-center gap-2">
+            <Music2 size={20} className="text-gray-400" />
+            <select
+              value={selectedBgm}
+              onChange={(e) => setSelectedBgm(Number(e.target.value))}
+              className="w-full bg-gray-700 text-white rounded-lg px-3 py-2"
+            >
+              {AUDIO_PATHS.lofi.map(bgm => (
+                <option key={bgm.id} value={bgm.id}>{bgm.label}</option>
+              ))}
+            </select>
+          </div>
+
+          <div className="flex items-center gap-2">
+            <Music size={20} className="text-gray-400" />
+            <select
+              value={selectedBell}
+              onChange={(e) => setSelectedBell(Number(e.target.value))}
+              className="w-full bg-gray-700 text-white rounded-lg px-3 py-2"
+            >
+              {AUDIO_PATHS.bell.map(bell => (
+                <option key={bell.id} value={bell.id}>{bell.label}</option>
+              ))}
+            </select>
+          </div>
         </div>
         
         <AudioController 
@@ -129,6 +162,8 @@ const TimerContainer = () => {
           remainingTime={remainingTime}
           totalDuration={getCurrentDuration()}
           volume={volume}
+          bgmPath={selectedBgmPath}
+          bellPath={selectedBellPath}
         />
         
         <div className="mt-8 text-center text-gray-400 text-sm">

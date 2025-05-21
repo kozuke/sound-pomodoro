@@ -1,5 +1,5 @@
 import { useEffect, useRef } from 'react';
-import { AUDIO_PATHS, TimerMode } from '../constants/timer';
+import { TimerMode } from '../constants/timer';
 
 // Add isFading property to HTMLAudioElement
 declare global {
@@ -15,15 +15,19 @@ interface AudioControllerProps {
   remainingTime: number;
   totalDuration: number;
   volume: number;
+  bgmPath: string;
+  bellPath: string;
 }
 
-const AudioController = ({ mode, isActive, onSessionComplete, remainingTime, totalDuration, volume }: AudioControllerProps) => {
+const AudioController = ({ mode, isActive, onSessionComplete, remainingTime, totalDuration, volume, bgmPath, bellPath }: AudioControllerProps) => {
   const mainLofiAudioRef = useRef<HTMLAudioElement | null>(null);
   const endingLofiAudioRef = useRef<HTMLAudioElement | null>(null);
   const bellAudioRef = useRef<HTMLAudioElement | null>(null);
   const hasTransitionedRef = useRef(false);
   const prevModeRef = useRef<TimerMode | null>(null);
   const volumeRef = useRef(volume);
+  const prevBgmPathRef = useRef(bgmPath);
+  const prevBellPathRef = useRef(bellPath);
 
   const mainFadeIntervalRef = useRef<number | null>(null);
   const endingFadeIntervalRef = useRef<number | null>(null);
@@ -90,7 +94,7 @@ const AudioController = ({ mode, isActive, onSessionComplete, remainingTime, tot
 
   // Initialize audio elements
   useEffect(() => {
-    mainLofiAudioRef.current = new Audio(AUDIO_PATHS.lofi);
+    mainLofiAudioRef.current = new Audio(bgmPath);
     mainLofiAudioRef.current.loop = true;
     mainLofiAudioRef.current.volume = volumeRef.current;
     
@@ -98,7 +102,7 @@ const AudioController = ({ mode, isActive, onSessionComplete, remainingTime, tot
     endingLofiAudioRef.current.loop = true;
     endingLofiAudioRef.current.volume = volumeRef.current;
     
-    bellAudioRef.current = new Audio(AUDIO_PATHS.bell);
+    bellAudioRef.current = new Audio(bellPath);
     bellAudioRef.current.preload = 'auto';
     bellAudioRef.current.volume = volumeRef.current;
     
@@ -120,6 +124,25 @@ const AudioController = ({ mode, isActive, onSessionComplete, remainingTime, tot
       }
     };
   }, []);
+
+  // Update audio sources when they change
+  useEffect(() => {
+    if (bgmPath !== prevBgmPathRef.current && mainLofiAudioRef.current) {
+      const wasPlaying = !mainLofiAudioRef.current.paused;
+      const currentTime = mainLofiAudioRef.current.currentTime;
+      mainLofiAudioRef.current.src = bgmPath;
+      if (wasPlaying) {
+        mainLofiAudioRef.current.currentTime = currentTime;
+        mainLofiAudioRef.current.play().catch(console.error);
+      }
+      prevBgmPathRef.current = bgmPath;
+    }
+
+    if (bellPath !== prevBellPathRef.current && bellAudioRef.current) {
+      bellAudioRef.current.src = bellPath;
+      prevBellPathRef.current = bellPath;
+    }
+  }, [bgmPath, bellPath]);
 
   // Update volume when it changes
   useEffect(() => {

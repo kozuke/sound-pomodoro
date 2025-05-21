@@ -14,7 +14,13 @@ export type TimerMode = 'focus' | 'break';
 
 // Audio file paths - using reliable, freely available audio files
 export const AUDIO_PATHS = {
-  lofi: '/audio/main_bgm_1.mp3',
+  lofi: [
+    { id: 1, path: '/audio/main_bgm_1.mp3', label: 'Lo-fi 1' },
+    { id: 2, path: '/audio/main_bgm_2.mp3', label: 'Lo-fi 2' },
+  ],
   lofiEnding: '/audio/ending_bgm.mp3',
-  bell: '/audio/bell_1.mp3'
-};
+  bell: [
+    { id: 1, path: '/audio/bell_1.mp3', label: 'Bell 1' },
+    { id: 2, path: '/audio/bell_2.mp3', label: 'Bell 2' },
+  ]
+} as const;
