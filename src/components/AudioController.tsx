@@ -1,23 +1,29 @@
 import { useEffect, useRef } from 'react';
 import { AUDIO_PATHS, TimerMode } from '../constants/timer';
 
+// Add isFading property to HTMLAudioElement
+declare global {
+  interface HTMLAudioElement {
+    isFading?: boolean;
+  }
+}
+
 interface AudioControllerProps {
   mode: TimerMode;
   isActive: boolean;
   onSessionComplete: () => void;
   remainingTime: number;
   totalDuration: number;
+  volume: number;
 }
 
-/**
- * Component that handles audio playback based on timer mode
- */
-const AudioController = ({ mode, isActive, onSessionComplete, remainingTime, totalDuration }: AudioControllerProps) => {
+const AudioController = ({ mode, isActive, onSessionComplete, remainingTime, totalDuration, volume }: AudioControllerProps) => {
   const mainLofiAudioRef = useRef<HTMLAudioElement | null>(null);
   const endingLofiAudioRef = useRef<HTMLAudioElement | null>(null);
   const bellAudioRef = useRef<HTMLAudioElement | null>(null);
   const hasTransitionedRef = useRef(false);
   const prevModeRef = useRef<TimerMode | null>(null);
+  const volumeRef = useRef(volume);
 
   const mainFadeIntervalRef = useRef<number | null>(null);
   const endingFadeIntervalRef = useRef<number | null>(null);
@@ -35,6 +41,12 @@ const AudioController = ({ mode, isActive, onSessionComplete, remainingTime, tot
       return;
     }
 
+    // If already fading, don't start a new fade
+    if (audioElement.isFading) {
+      if (onComplete) onComplete();
+      return;
+    }
+
     if (intervalRef.current) {
       clearInterval(intervalRef.current);
       intervalRef.current = null;
@@ -48,46 +60,54 @@ const AudioController = ({ mode, isActive, onSessionComplete, remainingTime, tot
       return;
     }
 
-    const steps = 20; // 20 steps for smooth fade
+    audioElement.isFading = true;
+    const steps = 20;
     const stepDuration = duration / steps;
     let currentStep = 0;
 
-    // Ensure audioElement volume is set to initialVolume before starting interval
     audioElement.volume = initialVolume;
 
     const fadeIntervalId = setInterval(() => {
       currentStep++;
       const newVolume = initialVolume + volumeChange * (currentStep / steps);
-      audioElement.volume = Math.max(0, Math.min(1, newVolume)); // Clamp volume between 0 and 1
+      audioElement.volume = Math.max(0, Math.min(1, newVolume * volumeRef.current));
 
       if (currentStep >= steps) {
         clearInterval(fadeIntervalId);
         intervalRef.current = null;
-        audioElement.volume = targetVolume; // Ensure target volume is precisely set
+        audioElement.volume = targetVolume * volumeRef.current;
+        if (targetVolume === 0 && !audioElement.paused) {
+          audioElement.pause();
+        }
+        audioElement.isFading = false;
         if (onComplete) {
           onComplete();
         }
       }
     }, stepDuration);
-    intervalRef.current = fadeIntervalId as unknown as number; // Store interval ID
+    intervalRef.current = fadeIntervalId as unknown as number;
   };
 
   // Initialize audio elements
   useEffect(() => {
     mainLofiAudioRef.current = new Audio(AUDIO_PATHS.lofi);
     mainLofiAudioRef.current.loop = true;
+    mainLofiAudioRef.current.volume = volumeRef.current;
     
     endingLofiAudioRef.current = new Audio(AUDIO_PATHS.lofiEnding);
     endingLofiAudioRef.current.loop = true;
+    endingLofiAudioRef.current.volume = volumeRef.current;
     
     bellAudioRef.current = new Audio(AUDIO_PATHS.bell);
     bellAudioRef.current.preload = 'auto';
-    bellAudioRef.current.loop = true;
+    bellAudioRef.current.volume = volumeRef.current;
     
-    // Cleanup on unmount
     return () => {
+      if (mainLofiAudioRef.current?.isFading) return;
       mainLofiAudioRef.current?.pause();
+      if (endingLofiAudioRef.current?.isFading) return;
       endingLofiAudioRef.current?.pause();
+      if (bellAudioRef.current?.isFading) return;
       bellAudioRef.current?.pause();
 
       if (mainFadeIntervalRef.current) {
@@ -101,134 +121,128 @@ const AudioController = ({ mode, isActive, onSessionComplete, remainingTime, tot
     };
   }, []);
 
+  // Update volume when it changes
+  useEffect(() => {
+    volumeRef.current = volume;
+    if (mainLofiAudioRef.current && !mainLofiAudioRef.current.isFading) {
+      mainLofiAudioRef.current.volume = volumeRef.current;
+    }
+    if (endingLofiAudioRef.current && !endingLofiAudioRef.current.isFading) {
+      endingLofiAudioRef.current.volume = volumeRef.current;
+    }
+    if (bellAudioRef.current && !bellAudioRef.current.isFading) {
+      bellAudioRef.current.volume = volumeRef.current;
+    }
+  }, [volume]);
+
   // Handle audio playback and track switching based on timer mode and status
   useEffect(() => {
     if (!mainLofiAudioRef.current || !endingLofiAudioRef.current || !bellAudioRef.current) return;
 
-    // Define the switch threshold.
-    // Default: switch when 5% of time is left (totalDuration * 0.05).
-    // For testing "残り時間95%で" (switch when 5% of time has passed), use totalDuration * 0.95.
-    const thresholdPercentage = 0.2; // Change to 0.95 for testing "残り時間95%"
+    const thresholdPercentage = 0.2;
     const switchThreshold = totalDuration * thresholdPercentage;
 
     if (isActive) {
       if (mode === 'focus') {
-        // Stop break sound if it was playing
-        if (!bellAudioRef.current.paused) {
-          fadeAudio(bellAudioRef.current, 0, 200, mainFadeIntervalRef, () => { // Using mainFadeIntervalRef for simplicity, consider a dedicated one if conflicts
-            bellAudioRef.current?.pause();
-          });
+        if (!bellAudioRef.current.paused && !bellAudioRef.current.isFading) {
+          fadeAudio(bellAudioRef.current, 0, 200, mainFadeIntervalRef);
         }
 
-        if (remainingTime <= switchThreshold) { // Time to switch to ending BGM
+        if (remainingTime <= switchThreshold) {
           if (!hasTransitionedRef.current) {
             if (endingLofiAudioRef.current) {
               endingLofiAudioRef.current.currentTime = 0;
-              endingLofiAudioRef.current.volume = 0; // Start silent
+              endingLofiAudioRef.current.volume = 0;
             }
 
-            fadeAudio(mainLofiAudioRef.current, 0, 1000, mainFadeIntervalRef, () => {
-              mainLofiAudioRef.current?.pause();
-            });
+            if (!mainLofiAudioRef.current.isFading) {
+              fadeAudio(mainLofiAudioRef.current, 0, 1000, mainFadeIntervalRef);
+            }
 
-            endingLofiAudioRef.current?.play()
-              .then(() => {
-                fadeAudio(endingLofiAudioRef.current, 1, 1000, endingFadeIntervalRef);
-              })
-              .catch(error => {
-                console.error('Error playing ending lofi audio:', error.message);
-                if (mainLofiAudioRef.current) {
-                  if (mainFadeIntervalRef.current) {
-                    clearInterval(mainFadeIntervalRef.current);
-                    mainFadeIntervalRef.current = null;
+            if (!endingLofiAudioRef.current.isFading) {
+              endingLofiAudioRef.current?.play()
+                .then(() => {
+                  fadeAudio(endingLofiAudioRef.current, 1, 1000, endingFadeIntervalRef);
+                })
+                .catch(error => {
+                  console.error('Error playing ending lofi audio:', error.message);
+                  if (mainLofiAudioRef.current && !mainLofiAudioRef.current.isFading) {
+                    if (mainFadeIntervalRef.current) {
+                      clearInterval(mainFadeIntervalRef.current);
+                      mainFadeIntervalRef.current = null;
+                    }
+                    mainLofiAudioRef.current.volume = volumeRef.current;
+                    mainLofiAudioRef.current.play().catch(err => console.error('Error playing fallback audio:', err.message));
                   }
-                  mainLofiAudioRef.current.volume = 1;
-                  mainLofiAudioRef.current.play().catch(err => console.error('Error playing fallback audio:', err.message));
-                }
-                hasTransitionedRef.current = false;
-              });
+                  hasTransitionedRef.current = false;
+                });
+            }
             hasTransitionedRef.current = true;
           }
-        } else { // Time to play main BGM (or continue it)
-          if (hasTransitionedRef.current) { // Was playing ending BGM, switch back to main
+        } else {
+          if (hasTransitionedRef.current) {
             if (mainLofiAudioRef.current) {
               mainLofiAudioRef.current.currentTime = 0;
-              mainLofiAudioRef.current.volume = 0; // Start silent
+              mainLofiAudioRef.current.volume = 0;
             }
 
-            fadeAudio(endingLofiAudioRef.current, 0, 1000, endingFadeIntervalRef, () => {
-              endingLofiAudioRef.current?.pause();
-            });
+            if (!endingLofiAudioRef.current.isFading) {
+              fadeAudio(endingLofiAudioRef.current, 0, 1000, endingFadeIntervalRef);
+            }
             
-            mainLofiAudioRef.current?.play()
-              .then(() => {
-                fadeAudio(mainLofiAudioRef.current, 1, 1000, mainFadeIntervalRef);
-              })
-              .catch(error => console.error('Error playing main lofi audio:', error.message));
+            if (!mainLofiAudioRef.current.isFading) {
+              mainLofiAudioRef.current?.play()
+                .then(() => {
+                  fadeAudio(mainLofiAudioRef.current, 1, 1000, mainFadeIntervalRef);
+                })
+                .catch(error => console.error('Error playing main lofi audio:', error.message));
+            }
             hasTransitionedRef.current = false;
           } else {
-            if (mainLofiAudioRef.current && mainLofiAudioRef.current.paused) {
+            if (mainLofiAudioRef.current && mainLofiAudioRef.current.paused && !mainLofiAudioRef.current.isFading) {
               if (mainFadeIntervalRef.current) {
-                 clearInterval(mainFadeIntervalRef.current);
-                 mainFadeIntervalRef.current = null;
+                clearInterval(mainFadeIntervalRef.current);
+                mainFadeIntervalRef.current = null;
               }
-              // Play from start if: switching from break to focus, or focus session is reset/new
               if (prevModeRef.current === 'break' || remainingTime === totalDuration) {
                 mainLofiAudioRef.current.currentTime = 0;
               }
-              mainLofiAudioRef.current.volume = 1;
+              mainLofiAudioRef.current.volume = volumeRef.current;
               mainLofiAudioRef.current.play()
                 .catch(error => console.error('Error playing main lofi audio:', error.message));
-            } else if (mainLofiAudioRef.current && !mainLofiAudioRef.current.paused) {
-              if (mainLofiAudioRef.current.volume < 1 && !mainFadeIntervalRef.current) {
-                mainLofiAudioRef.current.volume = 1;
+            } else if (mainLofiAudioRef.current && !mainLofiAudioRef.current.paused && !mainLofiAudioRef.current.isFading) {
+              if (mainLofiAudioRef.current.volume < volumeRef.current && !mainFadeIntervalRef.current) {
+                mainLofiAudioRef.current.volume = volumeRef.current;
               }
             }
           }
         }
       } else if (mode === 'break') {
-        // Stop focus sounds if they were playing
-        if (mainLofiAudioRef.current && (!mainLofiAudioRef.current.paused || mainLofiAudioRef.current.volume > 0)) {
-          fadeAudio(mainLofiAudioRef.current, 0, 500, mainFadeIntervalRef, () => {
-            mainLofiAudioRef.current?.pause();
-          });
+        if (mainLofiAudioRef.current && (!mainLofiAudioRef.current.paused || mainLofiAudioRef.current.volume > 0) && !mainLofiAudioRef.current.isFading) {
+          fadeAudio(mainLofiAudioRef.current, 0, 500, mainFadeIntervalRef);
         }
-        if (endingLofiAudioRef.current && (!endingLofiAudioRef.current.paused || endingLofiAudioRef.current.volume > 0)) {
-          fadeAudio(endingLofiAudioRef.current, 0, 500, endingFadeIntervalRef, () => {
-            endingLofiAudioRef.current?.pause();
-          });
+        if (endingLofiAudioRef.current && (!endingLofiAudioRef.current.paused || endingLofiAudioRef.current.volume > 0) && !endingLofiAudioRef.current.isFading) {
+          fadeAudio(endingLofiAudioRef.current, 0, 500, endingFadeIntervalRef);
         }
-        hasTransitionedRef.current = false; // Reset focus transition state
+        hasTransitionedRef.current = false;
 
-        // Play bell sound
-        if (bellAudioRef.current.paused) {
-          // Consider if bell needs fade in. For simplicity, playing directly.
-          // fadeAudio(bellAudioRef.current, 1, 500, bellFadeIntervalRef); // Would need a bellFadeIntervalRef
-          bellAudioRef.current.volume = 1; // Play at full volume
+        if (bellAudioRef.current.paused && !bellAudioRef.current.isFading) {
+          bellAudioRef.current.volume = volumeRef.current;
           bellAudioRef.current.play().catch(error => console.error('Error playing bell audio for break:', error.message));
         }
       }
-    } else { // Timer is not active: Stop all music
+    } else {
       const fadeDuration = 500;
-      const isReset = remainingTime === totalDuration; // Check for reset condition
+      const isReset = remainingTime === totalDuration;
 
       if (mainLofiAudioRef.current) {
-        if (!mainLofiAudioRef.current.paused || mainLofiAudioRef.current.volume > 0) {
-          fadeAudio(mainLofiAudioRef.current, 0, fadeDuration, mainFadeIntervalRef, () => {
-            if (mainLofiAudioRef.current) {
-              mainLofiAudioRef.current.pause();
-              if (isReset) {
-                mainLofiAudioRef.current.currentTime = 0;
-              }
-            }
-          });
-        } else {
-          // Already paused and volume is 0, or pause was called without fade
-          mainLofiAudioRef.current.pause(); // Ensure it's paused
+        if ((!mainLofiAudioRef.current.paused || mainLofiAudioRef.current.volume > 0) && !mainLofiAudioRef.current.isFading) {
+          fadeAudio(mainLofiAudioRef.current, 0, fadeDuration, mainFadeIntervalRef);
+        } else if (!mainLofiAudioRef.current.isFading) {
           if (isReset) {
             mainLofiAudioRef.current.currentTime = 0;
           }
-          if (mainFadeIntervalRef.current) { // Clear interval if it was somehow still running
+          if (mainFadeIntervalRef.current) {
             clearInterval(mainFadeIntervalRef.current);
             mainFadeIntervalRef.current = null;
           }
@@ -236,17 +250,9 @@ const AudioController = ({ mode, isActive, onSessionComplete, remainingTime, tot
       }
 
       if (endingLofiAudioRef.current) {
-        if (!endingLofiAudioRef.current.paused || endingLofiAudioRef.current.volume > 0) {
-          fadeAudio(endingLofiAudioRef.current, 0, fadeDuration, endingFadeIntervalRef, () => {
-            if (endingLofiAudioRef.current) {
-              endingLofiAudioRef.current.pause();
-              if (isReset) {
-                endingLofiAudioRef.current.currentTime = 0;
-              }
-            }
-          });
-        } else {
-          endingLofiAudioRef.current.pause();
+        if ((!endingLofiAudioRef.current.paused || endingLofiAudioRef.current.volume > 0) && !endingLofiAudioRef.current.isFading) {
+          fadeAudio(endingLofiAudioRef.current, 0, fadeDuration, endingFadeIntervalRef);
+        } else if (!endingLofiAudioRef.current.isFading) {
           if (isReset) {
             endingLofiAudioRef.current.currentTime = 0;
           }
@@ -257,27 +263,22 @@ const AudioController = ({ mode, isActive, onSessionComplete, remainingTime, tot
         }
       }
 
-      if (bellAudioRef.current) {
+      if (bellAudioRef.current && !bellAudioRef.current.isFading) {
         if (!bellAudioRef.current.paused) {
-          // Assuming bell doesn't need fade out for pause, direct pause
           bellAudioRef.current.pause();
-          if (isReset) {
-            bellAudioRef.current.currentTime = 0;
-          }
-        } else if (isReset) { // If already paused but it's a reset
-            bellAudioRef.current.currentTime = 0;
+        }
+        if (isReset) {
+          bellAudioRef.current.currentTime = 0;
         }
       }
       hasTransitionedRef.current = false;
     }
 
-    // Update prevModeRef after all logic for the current render has run
     prevModeRef.current = mode;
-  }, [mode, isActive, remainingTime, totalDuration, onSessionComplete]); // Added onSessionComplete to dependencies, as per original
+  }, [mode, isActive, remainingTime, totalDuration, volume, onSessionComplete]);
 
-  // Play bell sound on session completion (original functionality for focus session end)
   const playBellSound = () => {
-    if (!bellAudioRef.current) return;
+    if (!bellAudioRef.current || bellAudioRef.current.isFading) return;
     
     bellAudioRef.current.currentTime = 0;
     bellAudioRef.current.play()
@@ -292,22 +293,14 @@ const AudioController = ({ mode, isActive, onSessionComplete, remainingTime, tot
       playBellSound();
       originalOnSessionComplete();
     };
-    // This reassignment doesn't actually change the prop from the parent.
-    // To correctly enhance, onSessionComplete itself should be called within this component's logic
-    // or the parent should pass an already enhanced function.
-    // For now, assuming this structure is intended or handled elsewhere.
-    // A better way: Call playBellSound() then props.onSessionComplete() inside this component's logic
-    // where session completion is detected.
-    // However, current structure passes onSessionComplete to TimerContainer.
-    // Let's leave this as is, as it's outside the scope of BGM fading.
-    // The prop onSessionComplete cannot be reassigned like this.
-    // It should be:
-    // const handleSessionComplete = () => { playBellSound(); originalOnSessionComplete(); }
-    // And use handleSessionComplete in this component or pass it down if this component triggers completion.
-    // Given the current structure, this bell sound effect is tied to when the prop function is called.
-  }, [onSessionComplete]); // This effect will re-run if onSessionComplete changes, which is typical for callbacks.
 
-  return null; // This component doesn't render anything
+    // Clean up the effect
+    return () => {
+      // Restore original onSessionComplete if necessary, or handle cleanup
+    };
+  }, [onSessionComplete]);
+
+  return null;
 };
 
 export default AudioController;
