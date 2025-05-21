@@ -171,6 +171,7 @@ const AudioController = ({ mode, isActive, onSessionComplete, remainingTime, tot
                  clearInterval(mainFadeIntervalRef.current);
                  mainFadeIntervalRef.current = null;
               }
+              mainLofiAudioRef.current.currentTime = 0;
               mainLofiAudioRef.current.volume = 1;
               mainLofiAudioRef.current.play()
                 .catch(error => console.error('Error playing main lofi audio:', error.message));
