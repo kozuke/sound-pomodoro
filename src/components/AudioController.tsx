@@ -17,6 +17,7 @@ const AudioController = ({ mode, isActive, onSessionComplete, remainingTime, tot
   const endingLofiAudioRef = useRef<HTMLAudioElement | null>(null);
   const bellAudioRef = useRef<HTMLAudioElement | null>(null);
   const hasTransitionedRef = useRef(false);
+  const prevModeRef = useRef<TimerMode | null>(null);
 
   const mainFadeIntervalRef = useRef<number | null>(null);
   const endingFadeIntervalRef = useRef<number | null>(null);
@@ -171,7 +172,10 @@ const AudioController = ({ mode, isActive, onSessionComplete, remainingTime, tot
                  clearInterval(mainFadeIntervalRef.current);
                  mainFadeIntervalRef.current = null;
               }
-              mainLofiAudioRef.current.currentTime = 0;
+              // Play from start if: switching from break to focus, or focus session is reset/new
+              if (prevModeRef.current === 'break' || remainingTime === totalDuration) {
+                mainLofiAudioRef.current.currentTime = 0;
+              }
               mainLofiAudioRef.current.volume = 1;
               mainLofiAudioRef.current.play()
                 .catch(error => console.error('Error playing main lofi audio:', error.message));
@@ -266,6 +270,9 @@ const AudioController = ({ mode, isActive, onSessionComplete, remainingTime, tot
       }
       hasTransitionedRef.current = false;
     }
+
+    // Update prevModeRef after all logic for the current render has run
+    prevModeRef.current = mode;
   }, [mode, isActive, remainingTime, totalDuration, onSessionComplete]); // Added onSessionComplete to dependencies, as per original
 
   // Play bell sound on session completion (original functionality for focus session end)
