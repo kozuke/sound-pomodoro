@@ -144,6 +144,12 @@ const AudioController = ({ mode, isActive, onSessionComplete, remainingTime, tot
 
     if (isActive) {
       if (mode === 'focus') {
+        // Break終了時にbell音を確実に停止
+        if (prevModeRef.current === 'break' && !bellAudioRef.current.paused && !bellAudioRef.current.isFading) {
+          bellAudioRef.current.pause();
+          bellAudioRef.current.currentTime = 0;
+        }
+        
         if (!bellAudioRef.current.paused && !bellAudioRef.current.isFading) {
           fadeAudio(bellAudioRef.current, 0, 200, mainFadeIntervalRef);
         }
@@ -226,7 +232,9 @@ const AudioController = ({ mode, isActive, onSessionComplete, remainingTime, tot
         }
         hasTransitionedRef.current = false;
 
+        // Break開始時にbell音を最初から再生
         if (bellAudioRef.current.paused && !bellAudioRef.current.isFading) {
+          bellAudioRef.current.currentTime = 0; // 最初から再生
           bellAudioRef.current.volume = volumeRef.current;
           bellAudioRef.current.play().catch(error => console.error('Error playing bell audio for break:', error.message));
         }
@@ -263,6 +271,7 @@ const AudioController = ({ mode, isActive, onSessionComplete, remainingTime, tot
         }
       }
 
+      // Timer停止時にbell音も確実に停止
       if (bellAudioRef.current && !bellAudioRef.current.isFading) {
         if (!bellAudioRef.current.paused) {
           bellAudioRef.current.pause();
