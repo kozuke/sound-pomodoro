@@ -12,7 +12,20 @@ export const TIMER_PRESETS = [
 // Timer modes
 export type TimerMode = 'focus' | 'break';
 
-// Audio file paths - using reliable, freely available audio files
+// Audio file paths utility functions
+export const getMainBgmPath = (bgmNumber: number): string => {
+  return `/audio/main_bgm_${bgmNumber}.mp3`;
+};
+
+export const getEndingBgmPath = (bgmNumber: number): string => {
+  return `/audio/ending_bgm_${bgmNumber}.mp3`;
+};
+
+export const getBellPath = (bellNumber: number = 1): string => {
+  return `/audio/bell_${bellNumber}.mp3`;
+};
+
+// Legacy audio paths - keeping for backward compatibility
 export const AUDIO_PATHS = {
   lofi: '/audio/main_bgm_1.mp3',
   lofiEnding: '/audio/ending_bgm.mp3',
