@@ -197,7 +197,7 @@ const Settings: React.FC<SettingsProps> = ({ isOpen, onClose }) => {
           
           {/* メインBGM選択 */}
           <div className="mb-4">
-            <h4 className="text-md font-medium mb-3">集中セッション BGM</h4>
+            <h4 className="text-md font-medium mb-3">メインセッション BGM</h4>
             <div className="grid grid-cols-3 gap-2">
               {bgmOptions.map((option) => {
                 const isSelected = audioSettings.mainBgm === option.value;
@@ -222,7 +222,7 @@ const Settings: React.FC<SettingsProps> = ({ isOpen, onClose }) => {
 
           {/* エンディングBGM選択 */}
           <div>
-            <h4 className="text-md font-medium mb-3">休憩セッション BGM</h4>
+            <h4 className="text-md font-medium mb-3">ラストスパート BGM</h4>
             <div className="grid grid-cols-3 gap-2">
               {bgmOptions.map((option) => {
                 const isSelected = audioSettings.endingBgm === option.value;
