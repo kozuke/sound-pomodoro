@@ -1,18 +1,22 @@
 import { useState, useEffect, useCallback } from 'react';
-import { Music, Coffee } from 'lucide-react';
+import { Music, Coffee, Settings as SettingsIcon } from 'lucide-react';
 import { TIMER_PRESETS, TimerMode } from '../constants/timer';
 import CircularTimer from './CircularTimer';
 import Controls from './Controls';
 import AudioController from './AudioController';
+import Settings from './Settings';
+import { useTheme } from '../context/ThemeContext';
 
 /**
  * Main container component for the Pomodoro timer functionality
  */
 const TimerContainer = () => {
+  const { currentTheme } = useTheme();
   const [selectedMinutes, setSelectedMinutes] = useState(25);
   const [mode, setMode] = useState<TimerMode>('focus');
   const [remainingTime, setRemainingTime] = useState(selectedMinutes * 60);
   const [isActive, setIsActive] = useState(false);
+  const [showSettings, setShowSettings] = useState(false);
   
   // Get current duration based on mode
   const getCurrentDuration = useCallback(() => {
@@ -68,7 +72,18 @@ const TimerContainer = () => {
   }, []);
 
   return (
-    <div className="flex flex-col items-center justify-center min-h-screen bg-gray-900 text-white p-4">
+    <div className={`flex flex-col items-center justify-center min-h-screen ${currentTheme.textPrimary} p-4`}>
+      {/* 設定ボタン */}
+      <div className="absolute top-4 right-4">
+        <button
+          onClick={() => setShowSettings(true)}
+          className={`p-3 rounded-lg ${currentTheme.buttonPrimary} transition-colors`}
+          title="設定"
+        >
+          <SettingsIcon size={20} />
+        </button>
+      </div>
+
       <div className="flex flex-col items-center max-w-md w-full mx-auto">
         {/* Duration selector */}
         <div className="flex flex-wrap justify-center gap-2 mb-8">
@@ -78,8 +93,8 @@ const TimerContainer = () => {
               onClick={() => handleDurationChange(preset.minutes)}
               className={`px-4 py-2 rounded-lg transition-all duration-200 ${
                 selectedMinutes === preset.minutes
-                  ? 'bg-violet-600 text-white'
-                  : 'bg-gray-700 hover:bg-gray-600 text-gray-200'
+                  ? `${currentTheme.accent} ${currentTheme.textPrimary}`
+                  : `${currentTheme.buttonPrimary} ${currentTheme.textSecondary}`
               }`}
             >
               {preset.label}
@@ -90,12 +105,12 @@ const TimerContainer = () => {
         {/* Mode indicator */}
         <div className="flex items-center mb-8 gap-2">
           {mode === 'focus' ? (
-            <div className="flex items-center text-emerald-400 text-lg font-medium">
+            <div className={`flex items-center ${currentTheme.focusColor} text-lg font-medium`}>
               <Music size={24} className="mr-2" />
               <span>Focus Session</span>
             </div>
           ) : (
-            <div className="flex items-center text-blue-400 text-lg font-medium">
+            <div className={`flex items-center ${currentTheme.breakColor} text-lg font-medium`}>
               <Coffee size={24} className="mr-2" />
               <span>Break Time</span>
             </div>
@@ -127,7 +142,7 @@ const TimerContainer = () => {
         />
         
         {/* Modal notification */}
-        <div className="mt-8 text-center text-gray-400 text-sm">
+        <div className={`mt-8 text-center ${currentTheme.textSecondary} text-sm`}>
           <p>
             {isActive 
               ? mode === 'focus' 
@@ -142,6 +157,12 @@ const TimerContainer = () => {
           )}
         </div>
       </div>
+
+      {/* Settings Modal */}
+      <Settings 
+        isOpen={showSettings} 
+        onClose={() => setShowSettings(false)} 
+      />
     </div>
   );
 };

@@ -1,5 +1,6 @@
 import { RefreshCw, Play, Pause } from 'lucide-react';
 import { TimerMode } from '../constants/timer';
+import { useTheme } from '../context/ThemeContext';
 
 interface ControlsProps {
   mode: TimerMode;
@@ -12,11 +13,13 @@ interface ControlsProps {
  * Timer control buttons component
  */
 const Controls = ({ mode, isActive, onReset, onToggle }: ControlsProps) => {
+  const { currentTheme } = useTheme();
+
   return (
     <div className="flex gap-4 mt-6">
       <button
         onClick={onToggle}
-        className={`flex items-center justify-center gap-2 px-6 py-3 rounded-lg font-medium transition-all duration-200 ${
+        className={`flex items-center justify-center gap-2 px-6 py-3 rounded-lg font-medium transition-all duration-200 ${currentTheme.textPrimary} ${
           isActive 
             ? 'bg-rose-600 hover:bg-rose-700' 
             : 'bg-emerald-600 hover:bg-emerald-700'
@@ -38,7 +41,7 @@ const Controls = ({ mode, isActive, onReset, onToggle }: ControlsProps) => {
       
       <button
         onClick={onReset}
-        className="flex items-center justify-center gap-2 px-6 py-3 bg-gray-700 hover:bg-gray-600 rounded-lg font-medium transition-all duration-200"
+        className={`flex items-center justify-center gap-2 px-6 py-3 rounded-lg font-medium transition-all duration-200 ${currentTheme.buttonPrimary} ${currentTheme.textPrimary}`}
         aria-label="Reset timer"
       >
         <RefreshCw size={20} />
